@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Mechanical Spares Matrix Pro V7</title>
+    <!-- SheetJS Library for multi-sheet Excel generation -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg-base: #0f111a;
+            --bg-surface: #161925;
+            --bg-element: #1f2336;
+            --bg-input: #121420;
+            --text-primary: #f0f2f5;
+            --text-secondary: #949fb5;
+            --accent-blue: #38bdf8;
+            --accent-green: #4ade80;
+            --accent-yellow: #fbbf24;
+            --accent-red: #f87171;
+            --accent-purple: #a855f7;
+            --border-muted: #2d334a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; }
+        body { background-color: var(--bg-base); color: var(--text-primary); padding: 30px; min-height: 100vh; }
+
+        /* Auth Screen Styling */
+        #authScreen { position: fixed; top:0; left:0; width:100vw; height:100vh; background: var(--bg-base); z-index: 9999; display: flex; justify-content: center; align-items: center; }
+        .auth-card { background: var(--bg-surface); border: 1px solid var(--border-muted); padding: 40px; border-radius: 12px; width: 420px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .auth-card h2 { font-size: 20px; margin-bottom: 20px; text-align: center; color: var(--accent-blue); letter-spacing: -0.5px; }
+        
+        header { margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-muted); padding-bottom: 20px; }
+        header h1 { font-size: 24px; font-weight: 700; background: linear-gradient(to right, #ffffff, var(--text-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .header-actions { display: flex; gap: 12px; align-items: center; }
+        .search-wrapper { position: relative; width: 280px; }
+        .search-wrapper input { width: 100%; background-color: var(--bg-surface); border: 1px solid var(--border-muted); color: var(--text-primary); padding: 10px 16px; border-radius: 8px; font-size: 13px; outline: none; }
+
+        /* Collapsible Dropdown Controls */
+        .dropdown-menu-container { position: relative; display: inline-block; }
+        .menu-trigger-btn { background: var(--bg-surface); border: 1px solid var(--border-muted); color: var(--text-primary); padding: 10px 16px; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .dropdown-content { display: none; position: absolute; right: 0; top: 45px; background-color: var(--bg-surface); border: 1px solid var(--border-muted); min-width: 260px; box-shadow: 0px 8px 24px rgba(0,0,0,0.5); border-radius: 8px; z-index: 100; overflow: hidden; }
+        .dropdown-content button { background: transparent; color: var(--text-primary); padding: 12px 16px; text-align: left; width: 100%; border: none; border-bottom: 1px solid var(--border-muted); font-size: 13px; border-radius: 0; display: block; transition: background 0.2s; }
+        .dropdown-content button:hover { background: var(--bg-element); color: var(--accent-blue); }
+        .show-menu { display: block !important; }
+
+        .tabs { display: flex; gap: 8px; margin-bottom: 24px; background: var(--bg-surface); padding: 6px; border-radius: 10px; width: fit-content; border: 1px solid var(--border-muted); }
+        .tab-btn { background: transparent; border: none; color: var(--text-secondary); padding: 10px 18px; cursor: pointer; font-weight: 600; font-size: 13px; border-radius: 7px; }
+        .tab-btn.active { background-color: var(--accent-blue); color: var(--bg-base); }
+        .tab-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .dashboard-grid { display: grid; grid-template-columns: 50% 48%; gap: 2%; align-items: start; width: 100%; }
+        .card { background-color: var(--bg-surface); border: 1px solid var(--border-muted); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .card h2 { color: var(--text-primary); font-size: 14px; font-weight: 700; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center; }
+
+        .rack-container { margin-bottom: 20px; background: rgba(255,255,255,0.01); padding: 16px; border-radius: 10px; border: 1px solid var(--border-muted); }
+        .rack-title { color: var(--text-secondary); font-size: 11px; font-weight: 700; margin-bottom: 12px; }
+
+        .columns-flex-grid { display: grid; gap: 10px; width: 100%; }
+        .cols-4 { grid-template-columns: repeat(4, 1fr); }
+        .cols-5 { grid-template-columns: repeat(5, 1fr); }
+
+        .col-box { background: var(--bg-element); border: 1px solid var(--border-muted); border-radius: 8px; padding: 16px 10px; text-align: center; cursor: pointer; position: relative; overflow: hidden; }
+        .col-box.selected { border-color: var(--accent-blue); background: rgba(56, 189, 248, 0.05); }
+        .col-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent-green); }
+        .col-box.has-low::before { background: var(--accent-yellow); }
+        .col-box.has-empty::before { background: var(--accent-red); }
+        .col-box.search-match { border-color: var(--accent-green) !important; box-shadow: 0 0 8px rgba(74, 222, 128, 0.4); }
+
+        .col-title { font-weight: 700; color: var(--text-primary); font-size: 14px; display: block; }
+        .col-count { font-size: 11px; color: var(--text-secondary); margin-top: 4px; display: block; }
+
+        .item-list-frame { max-height: 380px; overflow-y: auto; margin-bottom: 16px; }
+        .item-row { padding: 12px 14px; background: var(--bg-element); margin-bottom: 10px; border-radius: 8px; border: 1px solid var(--border-muted); }
+        .item-row-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .sap-tag { font-size: 11px; font-weight: 700; background: var(--bg-base); padding: 2px 6px; border-radius: 4px; color: var(--accent-blue); }
+        .category-tag { font-size: 10px; font-weight: 600; background: var(--border-muted); color: var(--text-secondary); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-right: auto; margin-left: 8px; }
+        .item-name { font-size: 14px; font-weight: 600; color: var(--text-primary); cursor: pointer; }
+
+        .item-details-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; font-size: 12px; color: var(--text-secondary); margin-top: 6px; border-top: 1px dashed var(--border-muted); padding-top: 6px; }
+
+        .extra-desc-panel, .history-ledger-panel { margin-top: 8px; padding: 10px; background: var(--bg-input); border-radius: 4px; font-size: 11px; display: none; }
+        .history-entry { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+        .form-panel { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; background: var(--bg-input); padding: 16px; border-radius: 10px; border: 1px solid var(--border-muted); }
+        .form-group { display: flex; flex-direction: column; position: relative; }
+        .span-all { grid-column: span 2; }
+        label { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase; }
+        input, textarea, select { width: 100%; background: var(--bg-surface); border: 1px solid var(--border-muted); color: var(--text-primary); padding: 10px; border-radius: 6px; outline: none; }
+        textarea { height: 55px; }
+
+        .form-actions { grid-column: span 2; display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+        button { font-weight: 700; cursor: pointer; border: none; padding: 10px 16px; border-radius: 6px; font-size: 13px; }
+        .btn-save { background: var(--accent-green); color: var(--bg-base); }
+        .btn-del { background: rgba(248, 113, 113, 0.1); color: var(--accent-red); border: 1px solid rgba(248, 113, 113, 0.2); }
+        .btn-action { background: var(--accent-blue); color: var(--bg-base); }
+
+        /* Quick Adjustment Buttons Subgroup styling */
+        .adjustment-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
+        .adj-btn { font-size: 11px; padding: 6px; text-align: center; border-radius: 4px; background: var(--bg-surface); border: 1px solid var(--border-muted); color: var(--text-primary); }
+        .adj-btn:hover { border-color: var(--accent-blue); }
+        .adj-active { border-color: var(--accent-yellow) !important; background: rgba(251, 191, 36, 0.05); }
+
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border-muted); }
+        th { color: var(--text-secondary); background: rgba(0,0,0,0.15); cursor: pointer; user-select: none; position: relative; }
+        th:hover { color: var(--text-primary); background: rgba(255,255,255,0.02); }
+
+        #masterLedgerView { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--bg-base); z-index: 5000; padding: 40px; overflow-y: auto; }
+
+        .badge { padding: 3px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+        .badge-empty { background: rgba(248, 113, 113, 0.15); color: var(--accent-red); }
+        .badge-low { background: rgba(251, 191, 36, 0.15); color: var(--accent-yellow); }
+        
+        .text-empty { color: var(--accent-red) !important; }
+        .text-low { color: var(--accent-yellow) !important; }
+        .text-normal { color: var(--accent-green) !important; }
+
+        .activity-feed { list-style: none; max-height: 120px; overflow-y: auto; font-size: 12px; color: var(--text-secondary); }
+        .activity-feed li { padding: 6px 0; border-bottom: 1px solid var(--border-muted); }
+        .toggle-form-btn { background: transparent; color: var(--accent-blue); padding: 4px 0; text-align: left; font-size: 11px; cursor: pointer; font-weight: normal; }
+
+        /* Admin User Account Modal Sub-Panel Frame */
+        #userMgmtOverlay { display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; background: rgba(0,0,0,0.75); z-index: 9998; justify-content: center; align-items: center; }
+        .modal-card { background: var(--bg-surface); border: 1px solid var(--border-muted); padding: 30px; border-radius: 12px; width: 520px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .permissions-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; background: var(--bg-input); padding: 12px; border-radius: 6px; border: 1px solid var(--border-muted); margin-top: 6px; }
+        .perm-check { display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; }
+        .perm-check input { width: auto; cursor: pointer; }
+        .user-list-box { max-height: 110px; overflow-y: auto; background: var(--bg-input); border: 1px solid var(--border-muted); border-radius: 6px; margin-bottom: 15px; }
+        .user-list-item { padding: 8px 12px; font-size: 12px; border-bottom: 1px solid var(--border-muted); cursor: pointer; display: flex; justify-content: space-between; }
+        .user-list-item:hover { background: var(--bg-element); color: var(--accent-blue); }
+
+        /* Table Control Toolbar Layout */
+        .ledger-toolbar { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; background: var(--bg-surface); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-muted); }
+        .ledger-toolbar label { font-size: 12px; text-transform: uppercase; margin-bottom: 0; }
+        .ledger-toolbar select { max-width: 320px; }
+    </style>
+</head>
+<body>
+
+    <!-- AUTH MODULE INTERFACE -->
+    <div id="authScreen">
+        <div class="auth-card">
+            <h2>Plant Asset Security Gateway</h2>
+            <div style="display:flex; flex-direction:column; gap:14px;">
+                <div class="form-group">
+                    <label>User Number / ID</label>
+                    <input type="text" id="authEmpId" placeholder="e.g., EMP1004" oninput="checkIfNewUserSetup()">
+                </div>
+                
+                <div class="form-group">
+                    <label id="passwordLabel">Security Key Access Password</label>
+                    <input type="password" id="authPassword" placeholder="••••••••">
+                </div>
+
+                <div class="form-group" id="confirmPasswordGroup" style="display: none;">
+                    <label style="color: var(--accent-yellow);">Confirm New Password</label>
+                    <input type="password" id="authConfirmPassword" placeholder="••••••••">
+                </div>
+
+                <button class="btn-action" style="width:100%; margin-top:10px;" id="authBtn" onclick="handleAuthSubmission()">Authenticate Profile</button>
+                <p id="authMessage" style="font-size:12px; text-align:center; color:var(--accent-yellow); font-weight: 500;"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN USER PROVISIONING & PERMISSIONS EDITOR MODAL -->
+    <div id="userMgmtOverlay">
+        <div class="modal-card">
+            <h3 style="font-size:16px; color:var(--accent-blue); margin-bottom:12px;">Enterprise User Accounts Registry</h3>
+            
+            <label>Select Tracked User Profile to Edit</label>
+            <div class="user-list-box" id="modalUserList"></div>
+
+            <div style="display:flex; flex-direction:column; gap:10px; border-top: 1px dashed var(--border-muted); padding-top:12px;">
+                <input type="hidden" id="mgmtIsEdit" value="0">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="form-group"><label>User Number / ID</label><input type="text" id="mgmtEmpId" placeholder="e.g. EMP1004"></div>
+                    <div class="form-group"><label>User Name</label><input type="text" id="mgmtName" placeholder="e.g. John Doe"></div>
+                </div>
+                <div class="form-group">
+                    <label>Assigned System Role</label>
+                    <select id="mgmtRole" onchange="togglePermGridState()">
+                        <option value="USER">STANDARD USER PROFILE</option>
+                        <option value="ADMIN">SYSTEM ADMINISTRATOR</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Segregated Operational Access Options</label>
+                    <div class="permissions-grid" id="mgmtPermGrid">
+                        <label class="perm-check"><input type="checkbox" id="pTabs" checked> Access Rooms/Tabs</label>
+                        <label class="perm-check"><input type="checkbox" id="pTake" checked> Withdraw/Take Spares</label>
+                        <label class="perm-check"><input type="checkbox" id="pRestock" checked> Restock Spares</label>
+                        <label class="perm-check"><input type="checkbox" id="pEditSpares" checked> Edit Spares</label>
+                        <label class="perm-check"><input type="checkbox" id="pRelocate" checked> Relocate Spares</label>
+                        <label class="perm-check"><input type="checkbox" id="pExport" checked> Export Ledger Logs</label>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+                    <button type="button" class="btn-del" id="mgmtDeleteBtn" style="display:none;" onclick="deleteUserFromRegistry()">Delete User Account</button>
+                    <div style="display:flex; gap:8px; margin-left:auto;">
+                        <button type="button" style="background:var(--bg-element); color:var(--text-primary);" onclick="closeUserMgmtModal()">Cancel</button>
+                        <button type="button" class="btn-save" onclick="commitUserRegistryChanges()">Save Profile</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP STRUCTURE -->
+    <div id="appContainer">
+        <header>
+            <div>
+                <h1>Mechanical Spares Operations Manager</h1>
+                <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Active Terminal User: <span id="activeUserLabel" style="color:var(--accent-yellow); font-weight:bold;"></span></p>
+            </div>
+            <div class="header-actions">
+                <button class="menu-trigger-btn" style="background:var(--bg-element); border-color:var(--accent-blue);" onclick="openMasterLedgerView()">📋 View Master Ledger Table</button>
+                
+                <div class="dropdown-menu-container" id="adminMenuWrapper">
+                    <button class="menu-trigger-btn" onclick="toggleSystemDropdownMenu()">⚙️ Matrix Admin Controls ▼</button>
+                    <div class="dropdown-content" id="systemDropdown">
+                        <button id="exportExcelBtn" onclick="wrapMenuAction(exportMachineWiseExcelSheets)">Export Machine-Wise Sheets (.XLSX)</button>
+                        <button onclick="wrapMenuAction(exportDatabaseFile)">Save Structural Backup (.JSON)</button>
+                        <button onclick="document.getElementById('importFileTrigger').click(); toggleSystemDropdownMenu();">Restore Structural Matrix (.JSON)</button>
+                        <button onclick="wrapMenuAction(openUserMgmtModal)">Manage / Add User Accounts</button>
+                    </div>
+                </div>
+                <input type="file" id="importFileTrigger" style="display: none;" accept=".json" onchange="importDatabaseFile(event)">
+                
+                <button class="menu-trigger-btn" style="background:rgba(248,113,113,0.1); border-color:var(--accent-red); color:var(--accent-red);" onclick="terminateSession()">Logout</button>
+
+                <div class="search-wrapper">
+                    <input type="text" id="globalSearch" placeholder="🔍 Scan barcode or search parts..." oninput="executeLiveSearch()">
+                </div>
+            </div>
+        </header>
+
+        <div class="tabs" id="tabBarWrapper">
+            <button class="tab-btn active" id="tab-room1" onclick="switchZone('room1')">Spare Room 1</button>
+            <button class="tab-btn" id="tab-room2" onclick="switchZone('room2')">Spare Room 2</button>
+            <button class="tab-btn" id="tab-room3" onclick="switchZone('room3')">Spare Room 3</button>
+            <button class="tab-btn" id="tab-bureau1" onclick="switchZone('bureau1')">Bureau 1</button>
+            <button class="tab-btn" id="tab-bureau2" onclick="switchZone('bureau2')">Bureau 2</button>
+        </div>
+
+        <div class="dashboard-grid">
+            <div>
+                <div class="card">
+                    <h2>Physical Location Grid <span id="activeZoneLabel" style="color: var(--accent-blue); font-size:13px;"></span></h2>
+                    <div id="facilityLayout"></div>
+                </div>
+                <div class="card">
+                    <h2>Active Shortage Logs</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Location</th>
+                                <th>SAP Material #</th>
+                                <th>Spare Name</th>
+                                <th>Stock Level</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alertTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div>
+                <div class="card">
+                    <h2><span id="detailsTitle">Inventory Component Breakdown</span></h2>
+                    <div id="itemsContainer" class="item-list-frame"></div>
+                    
+                    <div id="crudWrapper" style="display: none; border-top: 1px solid var(--border-muted); padding-top: 16px;">
+                        <h3 id="formModeTitle" style="font-size: 12px; color: var(--accent-blue); text-transform: uppercase; margin-bottom: 12px;">Add / Edit Spare Profile</h3>
+                        <form class="form-panel" onsubmit="event.preventDefault();">
+                            <input type="hidden" id="editItemIdx">
+                            
+                            <div class="form-group">
+                                <label>SAP Material Number</label>
+                                <input type="text" id="sapNum" placeholder="Scan or type code...">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Spare Part Name</label>
+                                <input type="text" id="partName" list="partNameSuggestions" placeholder="e.g. Drive Belt V2">
+                                <datalist id="partNameSuggestions"></datalist>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Material Category Group</label>
+                                <input type="text" id="partCategory" list="categorySuggestions" placeholder="Type category...">
+                                <datalist id="categorySuggestions"></datalist>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Target Machine / Unit</label>
+                                <select id="targetMachine" placeholder="Select machine..."></select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Manufacturer / Dimensions</label>
+                                <input type="text" id="dimensions" list="dimensionsSuggestions" placeholder="Specs mapping...">
+                                <datalist id="dimensionsSuggestions"></datalist>
+                            </div>
+                            
+                            <div class="form-group"><label>Alert Limit Threshold</label><input type="number" id="partThreshold" min="0"></div>
+                            
+                            <div class="form-group">
+                                <label>Current Physical Qty</label>
+                                <input type="number" id="partQty" min="0" value="0">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Pending Action Sub-Route</label>
+                                <div class="adjustment-row">
+                                    <button type="button" class="adj-btn" id="btnTakeState" onclick="togglePendingAction('TAKE')">Take</button>
+                                    <button type="button" class="adj-btn" id="btnRestockState" onclick="togglePendingAction('RESTOCK')">Restock</button>
+                                    <button type="button" class="adj-btn" id="btnRelocateState" onclick="togglePendingAction('RELOCATE')">Relocate</button>
+                                </div>
+                            </div>
+
+                            <div class="span-all" id="relocateTargetContainer" style="display:none; margin-top:4px;">
+                                <div class="form-group">
+                                    <label style="color:var(--accent-purple);">Target Destination Grid Location ID</label>
+                                    <input type="text" id="relocateDestinationId" placeholder="e.g. RM2-RK1-C3">
+                                </div>
+                            </div>
+
+                            <div class="span-all" id="actionQuantityContainer" style="display:none; margin-top:4px;">
+                                <div class="form-group">
+                                    <label id="actionQuantityLabel" style="color:var(--accent-yellow);">Transaction Factor Qty</label>
+                                    <input type="number" id="actionFactorQty" min="1" value="1">
+                                </div>
+                            </div>
+
+                            <div class="span-all">
+                                <button type="button" class="toggle-form-btn" id="toggleDescFormBtn" onclick="toggleFormDescriptionField()">➕ Show Extra Description Details</button>
+                                <div class="form-group" id="formDescWrapper" style="display: none;">
+                                    <label>Extended Mechanical Description</label>
+                                    <textarea id="partDescription"></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="button" class="btn-save" id="saveProfileBtn" onclick="saveItemProfile()">Save Profile</button>
+                                <button type="button" class="btn-del" id="delBtn" onclick="removeItemProfile()">Delete Profile</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="card"><h2>Facility Audit Feed</h2><ul class="activity-feed" id="logList"></ul></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MASTER GLOBAL LEDGER VIEWPORT -->
+    <div id="masterLedgerView">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border-muted); padding-bottom:15px;">
+            <div>
+                <h1 style="font-size:24px;">Global Plant Spares Master Ledger</h1>
+                <p style="color:var(--text-secondary); font-size:13px; margin-top:4px;">Unified Cross-Sector Production Infrastructure View</p>
+            </div>
+            <button class="menu-trigger-btn" style="background:var(--accent-red); color:var(--bg-base); font-weight:bold;" onclick="closeMasterLedgerView()">✕ Exit Master Sheet</button>
+        </div>
+
+        <!-- NEW CONTROLS TOOLBAR: Machine wise filtration framework -->
+        <div class="ledger-toolbar">
+            <label>Filter By Production Machinery:</label>
+            <select id="ledgerMachineFilter" onchange="renderMasterLedgerTableRows()"></select>
+        </div>
+
+        <table style="background:var(--bg-surface); border-radius:8px; overflow:hidden;">
+            <thead>
+                <tr>
+                    <th>Location Module</th>
+                    <th>Zone Sector</th>
+                    <th>Rack Structure</th>
+                    <th>Category</th>
+                    <th>SAP Material Number</th>
+                    <th>Spare Part Name</th>
+                    <th>Target Machine Unit</th>
+                    <th>Measurements/Specs</th>
+                    <th>Stock Level Qty</th>
+                    <th>Alert Limit</th>
+                </tr>
+            </thead>
+            <tbody id="masterLedgerTableBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        let currentZone = 'room1';
+        let selectedColId = null;
+        let columnsDB = [];
+        let activeUserSession = null;
+        
+        let globalCategories = [];
+        let globalMachines = ["TBR-Qplex", "TBR-Apex 2", "Calemard wide"];
+        let globalNames = [];
+        let globalDimensions = [];
+        
+        let pendingActionType = null;
+
+        let systemUsers = [
+            { empId: "ADMIN", name: "System Administrator", password: "123", role: "ADMIN", initialized: true, perms: { tabs: true, take: true, restock: true, editSpares: true, relocate: true, export: true } },
+            { empId: "USER", name: "Standard Operator Staff", password: "123", role: "USER", initialized: true, perms: { tabs: true, take: true, restock: true, editSpares: false, relocate: false, export: false } }
+        ];
+
+        function checkUserDatabaseSession() {
+            const cachedUsers = localStorage.getItem('matrix_user_db_v7');
+            if (cachedUsers) systemUsers = JSON.parse(cachedUsers);
+            else localStorage.setItem('matrix_user_db_v7', JSON.stringify(systemUsers));
+        }
+
+        function checkIfNewUserSetup() {
+            const empId = document.getElementById('authEmpId').value.trim().toUpperCase();
+            const confirmGroup = document.getElementById('confirmPasswordGroup');
+            const passwordLabel = document.getElementById('passwordLabel');
+            const authBtn = document.getElementById('authBtn');
+            const msgNode = document.getElementById('authMessage');
+
+            let userRecord = systemUsers.find(x => x.empId === empId);
+
+            if (userRecord && !userRecord.initialized) {
+                confirmGroup.style.display = 'flex';
+                passwordLabel.innerText = "Create New Password";
+                authBtn.innerText = "Register Password & Login";
+                msgNode.style.color = "var(--accent-yellow)";
+                msgNode.innerText = `Welcome ${userRecord.name}. Define your password to register your key.`;
+            } else {
+                confirmGroup.style.display = 'none';
+                passwordLabel.innerText = "Security Key Password";
+                authBtn.innerText = "Authenticate Profile";
+                msgNode.innerText = "";
+            }
+        }
+
+        function handleAuthSubmission() {
+            const empId = document.getElementById('authEmpId').value.trim().toUpperCase();
+            const password = document.getElementById('authPassword').value;
+            const confirmPassword = document.getElementById('authConfirmPassword').value;
+            const msgNode = document.getElementById('authMessage');
+
+            if(!empId) { msgNode.innerText = "Error: Input User Number / ID."; return; }
+
+            let userRecord = systemUsers.find(x => x.empId === empId);
+            if (!userRecord) { msgNode.style.color = "var(--accent-red)"; msgNode.innerText = "Access Refused."; return; }
+
+            if (!userRecord.initialized) {
+                if (password.length < 3) { msgNode.innerText = "Error: Password too short."; return; }
+                if (password !== confirmPassword) { msgNode.innerText = "Mismatch Error."; return; }
+                userRecord.password = password; userRecord.initialized = true;
+                localStorage.setItem('matrix_user_db_v7', JSON.stringify(systemUsers));
+            } else {
+                if (userRecord.password !== password) { msgNode.innerText = "Access Refused."; return; }
+            }
+
+            activeUserSession = userRecord;
+            document.getElementById('authScreen').style.display = 'none';
+            document.getElementById('activeUserLabel').innerText = `${userRecord.name} (${userRecord.empId})`;
+            
+            applySecurityRoleRestrictions();
+            buildStructuralDB();
+            rebuildSuggestionArrays();
+            
+            if(!activeUserSession.perms.tabs && activeUserSession.role !== 'ADMIN') {
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.disabled = true);
+            } else {
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.disabled = false);
+            }
+            switchZone('room1');
+        }
+
+        function applySecurityRoleRestrictions() {
+            const isAdmin = activeUserSession.role === 'ADMIN';
+            document.getElementById('adminMenuWrapper').style.display = 'inline-block';
+            document.getElementById('saveProfileBtn').style.display = 'inline-block';
+            document.getElementById('delBtn').style.display = isAdmin ? 'inline-block' : 'none';
+        }
+
+        function openUserMgmtModal() {
+            if(activeUserSession.role !== 'ADMIN') return alert("Access restricted.");
+            document.getElementById('userMgmtOverlay').style.display = 'flex';
+            renderModalUserList();
+            resetUserMgmtForm();
+        }
+
+        function closeUserMgmtModal() { document.getElementById('userMgmtOverlay').style.display = 'none'; }
+
+        function renderModalUserList() {
+            const container = document.getElementById('modalUserList'); container.innerHTML = '';
+            systemUsers.forEach((usr, idx) => {
+                container.innerHTML += `<div class="user-list-item" onclick="loadUserIntoMgmtFields(${idx})"><strong>${usr.name} (${usr.empId})</strong></div>`;
+            });
+        }
+
+        function loadUserIntoMgmtFields(idx) {
+            const usr = systemUsers[idx];
+            document.getElementById('mgmtIsEdit').value = "1";
+            document.getElementById('mgmtEmpId').value = usr.empId; document.getElementById('mgmtEmpId').disabled = true;
+            document.getElementById('mgmtName').value = usr.name; document.getElementById('mgmtRole').value = usr.role;
+            if(usr.perms) {
+                document.getElementById('pTabs').checked = usr.perms.tabs ?? true;
+                document.getElementById('pTake').checked = usr.perms.take ?? true;
+                document.getElementById('pRestock').checked = usr.perms.restock ?? true;
+                document.getElementById('pEditSpares').checked = usr.perms.editSpares ?? true;
+                document.getElementById('pRelocate').checked = usr.perms.relocate ?? true;
+                document.getElementById('pExport').checked = usr.perms.export ?? true;
+            }
+            document.getElementById('mgmtDeleteBtn').style.display = (usr.empId === 'ADMIN') ? 'none' : 'inline-block';
+            togglePermGridState();
+        }
+
+        function resetUserMgmtForm() {
+            document.getElementById('mgmtIsEdit').value = "0";
+            document.getElementById('mgmtEmpId').value = ''; document.getElementById('mgmtEmpId').disabled = false;
+            document.getElementById('mgmtName').value = ''; document.getElementById('mgmtRole').value = 'USER';
+            document.getElementById('pTabs').checked = true; document.getElementById('pTake').checked = true;
+            document.getElementById('pRestock').checked = true; document.getElementById('pEditSpares').checked = true;
+            document.getElementById('pRelocate').checked = true; document.getElementById('pExport').checked = true;
+            document.getElementById('mgmtDeleteBtn').style.display = 'none';
+            togglePermGridState();
+        }
+
+        function togglePermGridState() {
+            const role = document.getElementById('mgmtRole').value;
+            document.getElementById('mgmtPermGrid').style.opacity = (role === 'ADMIN') ? "0.4" : "1";
+        }
+
+        function commitUserRegistryChanges() {
+            const empId = document.getElementById('mgmtEmpId').value.trim().toUpperCase();
+            const name = document.getElementById('mgmtName').value.trim();
+            const role = document.getElementById('mgmtRole').value;
+            const isEdit = document.getElementById('mgmtIsEdit').value === "1";
+
+            if(!empId || !name) return alert("User Number and Name fields are required inputs.");
+
+            let permsObj = {
+                tabs: document.getElementById('pTabs').checked,
+                take: document.getElementById('pTake').checked,
+                restock: document.getElementById('pRestock').checked,
+                editSpares: document.getElementById('pEditSpares').checked,
+                relocate: document.getElementById('pRelocate').checked,
+                export: document.getElementById('pExport').checked
+            };
+
+            if (isEdit) {
+                let usr = systemUsers.find(x => x.empId === empId);
+                if(usr) { usr.name = name; usr.role = role; usr.perms = permsObj; }
+            } else {
+                if(systemUsers.some(x => x.empId === empId)) return alert("ID already tracked.");
+                systemUsers.push({ empId, name, password: "", role, initialized: false, perms: permsObj });
+            }
+
+            localStorage.setItem('matrix_user_db_v7', JSON.stringify(systemUsers));
+            closeUserMgmtModal();
+            renderMasterUI();
+        }
+
+        function deleteUserFromRegistry() {
+            const empId = document.getElementById('mgmtEmpId').value.trim().toUpperCase();
+            if(empId === 'ADMIN' || empId === activeUserSession.empId) return alert("Refused.");
+            if(confirm("Delete User profile?")) {
+                systemUsers = systemUsers.filter(x => x.empId !== empId);
+                localStorage.setItem('matrix_user_db_v7', JSON.stringify(systemUsers));
+                closeUserMgmtModal();
+            }
+        }
+
+        function terminateSession() {
+            activeUserSession = null; 
+            document.getElementById('authEmpId').value = '';
+            document.getElementById('authPassword').value = ''; 
+            document.getElementById('authConfirmPassword').value = '';
+            document.getElementById('confirmPasswordGroup').style.display = 'none';
+            document.getElementById('passwordLabel').innerText = "Security Key Access Password";
+            document.getElementById('authBtn').innerText = "Authenticate Profile";
+            document.getElementById('authMessage').innerText = '';
+            document.getElementById('authScreen').style.display = 'flex';
+        }
+
+        function toggleSystemDropdownMenu() { 
+            document.getElementById('systemDropdown').classList.toggle('show-menu'); 
+        }
+
+        // Dropdown Auto-Collapse Wrapper
+        function wrapMenuAction(callbackFunction) {
+            toggleSystemDropdownMenu();
+            callbackFunction();
+        }
+
+        function openMasterLedgerView() { 
+            populateLedgerMachineFilter();
+            renderMasterLedgerTableRows(); 
+            document.getElementById('masterLedgerView').style.display = 'block'; 
+        }
+        
+        function closeMasterLedgerView() { document.getElementById('masterLedgerView').style.display = 'none'; }
+
+        // Populate Ledger Machine Dropdown Filter Option Rows
+        function populateLedgerMachineFilter() {
+            const filterSelect = document.getElementById('ledgerMachineFilter');
+            filterSelect.innerHTML = '<option value="ALL">-- SHOW ALL OPERATIONAL MACHINERY --</option>';
+            globalMachines.forEach(machine => {
+                filterSelect.innerHTML += `<option value="${machine}">${machine}</option>`;
+            });
+        }
+
+        function renderMasterLedgerTableRows() {
+            const tbody = document.getElementById('masterLedgerTableBody'); 
+            tbody.innerHTML = '';
+            const selectedFilter = document.getElementById('ledgerMachineFilter').value;
+
+            columnsDB.forEach(col => {
+                col.items.forEach(i => {
+                    if (selectedFilter !== "ALL" && i.machine !== selectedFilter) return;
+
+                    tbody.innerHTML += `<tr>
+                        <td><strong>${col.id}</strong></td>
+                        <td>${col.zone.toUpperCase()}</td>
+                        <td>${col.container}</td>
+                        <td><span>${i.category || ''}</span></td>
+                        <td>${i.sap}</td>
+                        <td>${i.part}</td>
+                        <td>${i.machine}</td>
+                        <td>${i.dims}</td>
+                        <td><strong>${i.qty}</strong></td>
+                        <td>${i.threshold}</td>
+                    </tr>`;
+                });
+            });
+        }
+
+        function buildStructuralDB() {
+            const cache = localStorage.getItem('mechanical_matrix_db_v7');
+            if (cache) { try { columnsDB = JSON.parse(cache); return; } catch(e) {} }
+            for (let r = 1; r <= 3; r++) {
+                for (let rk = 1; rk <= 3; rk++) {
+                    for (let c = 1; c <= 4; c++) { columnsDB.push({ id: `RM${r}-RK${rk}-C${c}`, zone: `room${r}`, label: `Column ${c}`, container: `Rack ${rk}`, items: [] }); }
+                }
+            }
+            for (let b = 1; b <= 2; b++) {
+                for (let c = 1; c <= 5; c++) { columnsDB.push({ id: `BU${b}-C${c}`, zone: `bureau${b}`, label: `Slot Column ${c}`, container: `Storage Cabinet Layout`, items: [] }); }
+            }
+            saveDatabaseState();
+        }
+
+        function saveDatabaseState() { localStorage.setItem('mechanical_matrix_db_v7', JSON.stringify(columnsDB)); }
+
+        function rebuildSuggestionArrays() {
+            let uniqueCategories = new Set();
+            let uniqueMachines = new Set(["TBR-Qplex", "TBR-Apex 2", "Calemard wide"]);
+            let uniqueNames = new Set();
+            let uniqueDims = new Set();
+
+            columnsDB.forEach(col => {
+                col.items.forEach(i => {
+                    if(i.category) uniqueCategories.add(i.category);
+                    if(i.machine) uniqueMachines.add(i.machine);
+                    if(i.part) uniqueNames.add(i.part);
+                    if(i.dims) uniqueDims.add(i.dims);
+                });
+            });
+
+            globalCategories = Array.from(uniqueCategories);
+            globalMachines = Array.from(uniqueMachines);
+            globalNames = Array.from(uniqueNames);
+            globalDimensions = Array.from(uniqueDims);
+
+            bindArrayToDatalist("categorySuggestions", globalCategories);
+            bindArrayToDatalist("partNameSuggestions", globalNames);
+            bindArrayToDatalist("dimensionsSuggestions", globalDimensions);
+
+            // Populate Form Machine dropdown object elements
+            const machSelect = document.getElementById('targetMachine');
+            machSelect.innerHTML = '';
+            globalMachines.forEach(m => {
+                machSelect.innerHTML += `<option value="${m}">${m}</option>`;
+            });
+        }
+
+        function bindArrayToDatalist(elementId, datasetList) {
+            const dl = document.getElementById(elementId);
+            if(!dl) return; dl.innerHTML = '';
+            datasetList.forEach(str => { dl.innerHTML += `<option value="${str}"></option>`; });
+        }
+
+        function switchZone(zoneId) {
+            if(activeUserSession.role !== 'ADMIN' && !activeUserSession.perms.tabs) return alert("Restricted.");
+            currentZone = zoneId;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            const targetTab = document.getElementById(`tab-${zoneId}`);
+            if(targetTab) targetTab.classList.add('active');
+            
+            selectedColId = null;
+            document.getElementById('itemsContainer').innerHTML = '';
+            document.getElementById('crudWrapper').style.display = 'none';
+            renderMasterUI();
+        }
+
+        function renderMasterUI() {
+            const layoutContainer = document.getElementById('facilityLayout');
+            const alertTable = document.getElementById('alertTable');
+            layoutContainer.innerHTML = ''; alertTable.innerHTML = '';
+            document.getElementById('activeZoneLabel').innerText = `[ ${currentZone.toUpperCase()} ]`;
+
+            columnsDB.forEach(col => {
+                col.items.forEach(item => {
+                    if (item.qty <= item.threshold) {
+                        let isOut = item.qty === 0;
+                        alertTable.innerHTML += `<tr><td><strong>${col.id}</strong></td><td>${item.sap}</td><td>${item.part}</td><td class="${isOut ? 'text-empty':'text-low'}"><strong>${item.qty} pcs</strong></td><td><span class="badge ${isOut ? 'badge-empty':'badge-low'}">${isOut ? 'Empty':'Low'}</span></td></tr>`;
+                    }
+                });
+            });
+
+            const isRoom = currentZone.startsWith('room');
+            if (isRoom) {
+                for(let rk=1; rk<=3; rk++) {
+                    let rackContainer = document.createElement('div'); rackContainer.className = 'rack-container';
+                    rackContainer.innerHTML = `<div class="rack-title">RACK UNIT MODULE SYSTEM — 0${rk}</div>`;
+                    let grid = document.createElement('div'); grid.className = 'columns-flex-grid cols-4';
+                    columnsDB.filter(x => x.zone === currentZone && x.container === `Rack ${rk}`).forEach(col => grid.appendChild(createColNode(col)));
+                    rackContainer.appendChild(grid); layoutContainer.appendChild(rackContainer);
+                }
+            } else {
+                let container = document.createElement('div'); container.className = 'rack-container';
+                container.innerHTML = `<div class="rack-title">VERTICAL STORAGE UNITS</div>`;
+                let grid = document.createElement('div'); grid.className = 'columns-flex-grid cols-5';
+                columnsDB.filter(x => x.zone === currentZone).forEach(col => grid.appendChild(createColNode(col)));
+                container.appendChild(grid); layoutContainer.appendChild(container);
+            }
+        }
+
+        function createColNode(col) {
+            let div = document.createElement('div'); div.className = 'col-box'; div.id = `node-${col.id}`; div.onclick = () => viewColumnDetails(col.id);
+            if(selectedColId === col.id) div.classList.add('selected');
+            if(col.items.some(i => i.qty === 0)) div.classList.add('has-empty');
+            else if(col.items.some(i => i.qty <= i.threshold)) div.classList.add('has-low');
+            div.innerHTML = `<span class="col-title">${col.label}</span><span class="col-count">${col.items.length} SKUs</span>`;
+            return div;
+        }
+
+        function viewColumnDetails(colId) {
+            selectedColId = colId;
+            document.querySelectorAll('.col-box').forEach(b => b.classList.remove('selected'));
+            if(document.getElementById(`node-${colId}`)) document.getElementById(`node-${colId}`).classList.add('selected');
+            const col = columnsDB.find(x => x.id === colId);
+            document.getElementById('detailsTitle').innerText = `${col.id} - Part Allocations`;
+            renderItemList(col);
+            document.getElementById('crudWrapper').style.display = 'block';
+            resetToCreationMode();
+        }
+
+        function renderItemList(col) {
+            const container = document.getElementById('itemsContainer'); container.innerHTML = '';
+            col.items.forEach((item, index) => {
+                let trackingClass = item.qty === 0 ? 'text-empty' : (item.qty <= item.threshold ? 'text-low' : 'text-normal');
+                let historyLines = item.history ? item.history.map(h => `<div class="history-entry"><strong>[${h.timestamp}] (${h.type}) [User: ${h.operator}]</strong>: ${h.message}</div>`).reverse().join('') : '';
+                container.innerHTML += `
+                    <div class="item-row">
+                        <div class="item-row-header">
+                            <span class="item-name" onclick="loadItemToForm(${index})">${item.part}</span>
+                            <span class="category-tag">${item.category || 'None'}</span>
+                            <span class="sap-tag">SAP: ${item.sap}</span>
+                        </div>
+                        <div class="item-details-grid" onclick="loadItemToForm(${index})">
+                            <div>Machine: <strong>${item.machine}</strong></div><div style="text-align: right;">Stock: <strong class="${trackingClass}">${item.qty} pcs</strong></div>
+                            <div>Specs: <strong>${item.dims}</strong></div>
+                            <div style="text-align: right;"><span style="color:var(--accent-blue); cursor:pointer;" onclick="event.stopPropagation(); toggleSubPanel('desc', ${index})">📋 Info</span>&nbsp;&nbsp;<span style="color:var(--accent-yellow); cursor:pointer;" onclick="event.stopPropagation(); toggleSubPanel('history', ${index})">⏳ History</span></div>
+                        </div>
+                        <div class="extra-desc-panel" id="desc-view-${index}"><strong>Details:</strong><br>${item.description || 'No notes.'}</div>
+                        <div class="history-ledger-panel" id="history-view-${index}">${historyLines}</div>
+                    </div>`;
+            });
+        }
+
+        function toggleSubPanel(type, idx) { const el = document.getElementById(`${type}-view-${idx}`); el.style.display = el.style.display === 'block' ? 'none' : 'block'; }
+        
+        function toggleFormDescriptionField() {
+            const wrapper = document.getElementById('formDescWrapper');
+            wrapper.style.display = wrapper.style.display === 'none' ? 'flex' : 'none';
+        }
+
+        function togglePendingAction(actionType) {
+            if (actionType === 'TAKE' && activeUserSession.role !== 'ADMIN' && !activeUserSession.perms.take) return alert("Action Unauthorized.");
+            if (actionType === 'RESTOCK' && activeUserSession.role !== 'ADMIN' && !activeUserSession.perms.restock) return alert("Action Unauthorized.");
+            if (actionType === 'RELOCATE' && activeUserSession.role !== 'ADMIN' && !activeUserSession.perms.relocate) return alert("Action Unauthorized.");
+
+            if (pendingActionType === actionType) {
+                pendingActionType = null;
+                clearActionUIState();
+            } else {
+                pendingActionType = actionType;
+                updateActionUIState();
+            }
+        }
+
+        function clearActionUIState() {
+            document.querySelectorAll('.adj-btn').forEach(b => b.classList.remove('adj-active'));
+            document.getElementById('relocateTargetContainer').style.display = 'none';
+            document.getElementById('actionQuantityContainer').style.display = 'none';
+        }
+
+        function updateActionUIState() {
+            clearActionUIState();
+            if (pendingActionType === 'TAKE') {
+                document.getElementById('btnTakeState').classList.add('adj-active');
+                document.getElementById('actionQuantityLabel').innerText = "Qty to Withdraw / Take";
+                document.getElementById('actionQuantityContainer').style.display = 'flex';
+            } else if (pendingActionType === 'RESTOCK') {
+                document.getElementById('btnRestockState').classList.add('adj-active');
+                document.getElementById('actionQuantityLabel').innerText = "Qty to Restock / Add";
+                document.getElementById('actionQuantityContainer').style.display = 'flex';
+            } else if (pendingActionType === 'RELOCATE') {
+                document.getElementById('btnRelocateState').classList.add('adj-active');
+                document.getElementById('relocateTargetContainer').style.display = 'flex';
+            }
+        }
+
+        function saveItemProfile() {
+            const canEdit = activeUserSession.role === 'ADMIN' || activeUserSession.perms.editSpares;
+            
+            const sap = document.getElementById('sapNum').value.trim(); 
+            const name = document.getElementById('partName').value.trim();
+            const category = document.getElementById('partCategory').value.trim();
+            const machine = document.getElementById('targetMachine').value; 
+            const dims = document.getElementById('dimensions').value.trim();
+            let qty = parseInt(document.getElementById('partQty').value) || 0; 
+            const threshold = parseInt(document.getElementById('partThreshold').value) || 0;
+            const description = document.getElementById('partDescription').value.trim(); 
+            const idxStr = document.getElementById('editItemIdx').value;
+
+            if(!sap || !name) return alert("SAP Code and Part Name are required config parameters.");
+
+            let duplicateSapItem = null;
+            let duplicateNameItem = null;
+
+            columnsDB.forEach(col => {
+                col.items.forEach((item, i) => {
+                    if (selectedColId === col.id && idxStr !== '' && parseInt(idxStr) === i) return;
+                    if (item.sap.toLowerCase() === sap.toLowerCase()) duplicateSapItem = col.id;
+                    if (item.part.toLowerCase() === name.toLowerCase()) duplicateNameItem = col.id;
+                });
+            });
+
+            if (duplicateSapItem) return alert(`Validation Refusal: Duplicate SAP number entry detected! Already registered at grid location cell ${duplicateSapItem}.`);
+            if (duplicateNameItem) return alert(`Validation Refusal: Spare Name already matches an existing entry tracking at cell location ${duplicateNameItem}.`);
+
+            const col = columnsDB.find(x => x.id === selectedColId);
+            let activeRecordItem = null;
+
+            if(idxStr === '') {
+                if(!canEdit) return alert("Action Unauthorized: Profile lacks item creation access credentials.");
+                activeRecordItem = { sap, part: name, category, machine, dims, qty, threshold, description, history: [{ timestamp: generateTimestamp(), type: "CREATE", operator: activeUserSession.empId, message: "Registered into system mapping array." }] };
+                col.items.push(activeRecordItem);
+                logActivity(`Created profile item slot: ${name}`);
+            } else {
+                const idx = parseInt(idxStr);
+                activeRecordItem = col.items[idx];
+                
+                if (canEdit) {
+                    activeRecordItem.sap = sap;
+                    activeRecordItem.part = name;
+                    activeRecordItem.category = category;
+                    activeRecordItem.machine = machine;
+                    activeRecordItem.dims = dims;
+                    activeRecordItem.threshold = threshold;
+                    activeRecordItem.description = description;
+                    activeRecordItem.qty = qty;
+                }
+            }
+
+            if (idxStr !== '' && pendingActionType !== null) {
+                const factorAmount = parseInt(document.getElementById('actionFactorQty').value) || 0;
+
+                if (pendingActionType === 'TAKE') {
+                    if (factorAmount <= 0 || factorAmount > activeRecordItem.qty) return alert("Insufficient stock capacity execution bounds factor.");
+                    activeRecordItem.qty -= factorAmount;
+                    activeRecordItem.history.push({ timestamp: generateTimestamp(), type: "WITHDRAWAL", operator: activeUserSession.empId, message: `Dispatched ${factorAmount} items via panel pipeline.` });
+                    logActivity(`Withdrawal asset log processed on ${selectedColId}: ${factorAmount} pcs.`);
+                } 
+                else if (pendingActionType === 'RESTOCK') {
+                    if (factorAmount <= 0) return alert("Invalid entry transaction value.");
+                    activeRecordItem.qty += factorAmount;
+                    activeRecordItem.history.push({ timestamp: generateTimestamp(), type: "RESTOCK", operator: activeUserSession.empId, message: `Added ${factorAmount} stock units via pipeline save.` });
+                    logActivity(`Restocked inventory log processed on ${selectedColId}: ${factorAmount} units.`);
+                } 
+                else if (pendingActionType === 'RELOCATE') {
+                    let targetDestinationId = document.getElementById('relocateDestinationId').value.trim().toUpperCase();
+                    const targetDestCol = columnsDB.find(x => x.id === targetDestinationId);
+                    if (!targetDestCol) return alert("Target destination ID location mapping variant not found.");
+
+                    const idx = parseInt(idxStr);
+                    col.items.splice(idx, 1);
+
+                    activeRecordItem.history.push({ timestamp: generateTimestamp(), type: "RELOCATE", operator: activeUserSession.empId, message: `Transferred physical layout home grid mapping from ${selectedColId} to ${targetDestinationId}.` });
+                    targetDestCol.items.push(activeRecordItem);
+                    logActivity(`Relocated SKU ${activeRecordItem.part} across arrays directly to ${targetDestinationId}`);
+                }
+            }
+
+            saveDatabaseState();
+            rebuildSuggestionArrays();
+            clearActionUIState();
+            pendingActionType = null;
+            viewColumnDetails(selectedColId);
+            renderMasterUI();
+        }
+
+        function removeItemProfile() {
+            if(activeUserSession.role !== 'ADMIN') return alert("Action Unauthorized.");
+            const idx = parseInt(document.getElementById('editItemIdx').value);
+            const col = columnsDB.find(x => x.id === selectedColId);
+            if (confirm("Permanently delete structural item log?")) {
+                col.items.splice(idx, 1); saveDatabaseState(); rebuildSuggestionArrays(); viewColumnDetails(selectedColId); renderMasterUI();
+            }
+        }
+
+        function executeLiveSearch() {
+            const query = document.getElementById('globalSearch').value.toLowerCase().trim();
+            columnsDB.forEach(col => {
+                const node = document.getElementById(`node-${col.id}`); if(!node) return;
+                node.classList.remove('search-match');
+                if(query !== "" && col.items.some(i => i.part.toLowerCase().includes(query) || i.sap.toLowerCase().includes(query))) node.classList.add('search-match');
+            });
+        }
+
+        function exportMachineWiseExcelSheets() {
+            let machineGroupings = {};
+
+            columnsDB.forEach(col => {
+                col.items.forEach(item => {
+                    let machineKey = item.machine.trim() || "Unassigned Equipment";
+                    let statusLabel = item.qty === 0 ? "Empty" : (item.qty <= item.threshold ? "Low Limit" : "Normal");
+
+                    if(!machineGroupings[machineKey]) machineGroupings[machineKey] = [];
+                    machineGroupings[machineKey].push({
+                        "SAP Material Number": item.sap,
+                        "Spare Part Name": item.part,
+                        "Category Group": item.category || '',
+                        "Stock Quantity": item.qty,
+                        "Location ID Grid": col.id,
+                        "Rack Column Number": col.label,
+                        "Status": statusLabel
+                    });
+                });
+            });
+
+            let workbook = XLSX.utils.book_new();
+            for (let mName in machineGroupings) {
+                let ws = XLSX.utils.json_to_sheet(machineGroupings[mName]);
+                XLSX.utils.book_append_sheet(workbook, ws, mName.replace(/[\*\\\?\/\:\[\]]/g, '').substring(0, 30));
+            }
+            XLSX.writeFile(workbook, "Plant_Spares_Machine_Ledger.xlsx");
+        }
+
+        function exportDatabaseFile() {
+            let encoded = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(columnsDB, null, 2));
+            let link = document.createElement('a'); link.setAttribute("href", encoded); link.setAttribute("download", `Spares_Backup.json`); link.click();
+        }
+
+        function importDatabaseFile(event) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try { columnsDB = JSON.parse(e.target.result); saveDatabaseState(); rebuildSuggestionArrays(); switchZone('room1'); } catch(err) { alert("Error."); }
+            };
+            reader.readAsText(event.target.files[0]);
+        }
+
+        function loadItemToForm(idx) {
+            const col = columnsDB.find(x => x.id === selectedColId); const item = col.items[idx];
+            document.getElementById('editItemIdx').value = idx;
+            document.getElementById('sapNum').value = item.sap; document.getElementById('partName').value = item.part;
+            document.getElementById('partCategory').value = item.category || '';
+            document.getElementById('targetMachine').value = item.machine; document.getElementById('dimensions').value = item.dims;
+            document.getElementById('partQty').value = item.qty; document.getElementById('partThreshold').value = item.threshold;
+            document.getElementById('partDescription').value = item.description || '';
+            document.getElementById('crudWrapper').style.display = 'block';
+            
+            clearActionUIState(); pendingActionType = null;
+        }
+
+        function resetToCreationMode() {
+            document.getElementById('editItemIdx').value = ''; document.getElementById('sapNum').value = '';
+            document.getElementById('partName').value = ''; document.getElementById('partCategory').value = '';
+            document.getElementById('targetMachine').selectedIndex = 0; document.getElementById('dimensions').value = ''; 
+            document.getElementById('partQty').value = '0'; document.getElementById('partThreshold').value = '5'; 
+            document.getElementById('partDescription').value = ''; document.getElementById('delBtn').style.display = 'none';
+            clearActionUIState(); pendingActionType = null;
+        }
+
+        function generateTimestamp() {
+            let d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        }
+        function logActivity(msg) { document.getElementById('logList').innerHTML = `<li><strong>[${generateTimestamp().split(' ')[1]}]</strong> ${msg}</li>` + document.getElementById('logList').innerHTML; }
+
+        window.onload = function() { checkUserDatabaseSession(); }
+    </script>
+</body>
+</html>
